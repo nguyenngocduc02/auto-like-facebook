@@ -21,3 +21,5 @@ Thay đổi USERNAME ở dòng 23, copy các link vào file facebook_links.txt r
 ```bash
 python main.py
 ```
+## _Với các lần chạy sau, chỉ cần thay đổi nội dung trong file facebook_links.txt, sau đó chạy file bat._
+
