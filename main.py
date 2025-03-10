@@ -3,6 +3,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
 import undetected_chromedriver as uc
+import random
 
 def extract_links(text):
     url_pattern = r"https?://(?:www\.)?facebook\.com/[\w\-./?=&#]+"
@@ -25,7 +26,7 @@ driver.maximize_window()
 for link in links:
     try:
         driver.get(link)
-        time.sleep(3) 
+        time.sleep(2) 
         
         like_buttons = driver.find_elements(By.XPATH, "//div[@aria-label='Like' or @aria-label='Thích']")
         if like_buttons:
@@ -34,7 +35,7 @@ for link in links:
         else:
             print(f"Không tìm thấy nút Like: {link}")
         
-        time.sleep(1) 
+        time.sleep(random.uniform(0, 1)) 
     except Exception as e:
         print(f"Lỗi khi xử lý {link}: {e}")
 
