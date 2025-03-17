@@ -9,12 +9,16 @@ import pdb
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+from selenium.webdriver.common.keys import Keys
+import random
+
 
 def extract_links(text):
     url_pattern = r"https?://(?:www\.)?(?:facebook|youtube)\.com/[\w\-./?=&#]+"
     return re.findall(url_pattern, text)
 
 
+# Lấy link
 links = []
 with open("facebook_links.txt", "r", encoding="utf-8") as file:
     for line in file:
@@ -22,10 +26,24 @@ with open("facebook_links.txt", "r", encoding="utf-8") as file:
 
 links = list(set(links))
 
+# Lấy comment
+isComment = True
+
+comments = []
+if isComment:
+    # Mở file và đọc nội dung
+    with open("comment.txt", "r", encoding="utf-8") as file:
+        comments = file.readlines()  # Đọc từng dòng và lưu vào list
+
+    # Xóa khoảng trắng dư thừa (nếu có)
+    comments = [comment.strip() for comment in comments if comment.strip()]
+
+
+
 try:
     options = uc.ChromeOptions()
     options.add_argument("--user-data-dir=C:/Users/leduy/AppData/Local/Google/Chrome/User Data")  # Thay YOUR_USERNAME bằng tên user của bạn
-    options.add_argument("--profile-directory=Profile 7")  # Hoặc thay bằng profile cụ thể
+    options.add_argument("--profile-directory=Profile 4")  # Hoặc thay bằng profile cụ thể
 
     driver = uc.Chrome(options=options)
     driver.maximize_window()
@@ -40,6 +58,8 @@ for link in links:
         time.sleep(2) 
         
         if "facebook.com" in link:
+
+            # Like Facebook
             like_buttons = driver.find_elements(By.XPATH, "//div[@aria-label='Like' or @aria-label='Thích']")
             if like_buttons:
                 like_button = like_buttons[0]  # Chọn nút đầu tiên
@@ -72,6 +92,27 @@ for link in links:
                     print(f"👍 Đã like: {link}")
             else:
                 print(f"Không tìm thấy nút Like: {link}")
+
+            # Comment Facebook
+            if isComment:
+                time.sleep(1)
+                random_comment = random.choice(comments)  # Lấy 1 comment ngẫu nhiên
+
+                # Tìm ô nhập bình luận
+                comment_box = driver.find_element(By.CSS_SELECTOR, 'div[contenteditable="true"]')
+
+                if comment_box:
+                    comment_box.click()  # Click vào để kích hoạt ô nhập
+                    comment_box.send_keys(random_comment)  # Nhập nội dung
+                    time.sleep(1)  # Đợi giao diện cập nhật
+                    
+                    # Gửi bình luận bằng cách nhấn Enter
+                    comment_box.send_keys(Keys.ENTER)
+
+                    print(f"Đã nhập và gửi bình luận!: {link}")
+                else:
+                    print(f"Không tìm thấy ô nhập bình luận!: {link}")
+
 
         elif "youtube.com" in link:
             # 🟢 Tìm phần tử cha có id="like-button"
@@ -113,7 +154,7 @@ for link in links:
                     print(f"❌ Không tìm thấy nút Like hoặc Unlike. {link}")
             
 
-        time.sleep(random.uniform(0, 2))
+        time.sleep(2)
     except Exception as e:
         print(f"Lỗi khi xử lý {link}: {e}")
 
