@@ -103,7 +103,7 @@ for link in links:
                     print(f"❌ Không tìm thấy nút Like hoặc Unlike. {link}")
             
 
-        time.sleep(random.uniform(0, 2))
+        time.sleep(random.uniform(5, 10))
     except Exception as e:
         print(f"Lỗi khi xử lý {link}: {e}")
 
