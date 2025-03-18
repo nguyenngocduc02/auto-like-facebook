@@ -24,8 +24,8 @@ links = list(set(links))
 
 try:
     options = uc.ChromeOptions()
-    options.add_argument("--user-data-dir=C:/Users/leduy/AppData/Local/Google/Chrome/User Data")  # Thay YOUR_USERNAME bằng tên user của bạn
-    options.add_argument("--profile-directory=Profile 7")  # Hoặc thay bằng profile cụ thể
+    options.add_argument("--user-data-dir=C:/Users/nguye/AppData/Local/Google/Chrome/User Data")  # Thay YOUR_USERNAME bằng tên user của bạn
+    # options.add_argument("--profile-directory=Profile 7")  # Hoặc thay bằng profile cụ thể
 
     driver = uc.Chrome(options=options)
     driver.maximize_window()
@@ -40,36 +40,26 @@ for link in links:
         time.sleep(2) 
         
         if "facebook.com" in link:
-            like_buttons = driver.find_elements(By.XPATH, "//div[@aria-label='Like' or @aria-label='Thích']")
-            if like_buttons:
-                like_button = like_buttons[0]  # Chọn nút đầu tiên
+            popup = driver.find_elements(By.XPATH, "//div[@role='dialog']")
+            is_popup = len(popup) > 0
 
-                # 🟢 Kiểm tra chính like_button có `aria-label="Thích"` và `aria-pressed="true"`
+            if is_popup:
+                like_buttons = driver.find_elements(By.XPATH, "//div[@role='dialog']//div[@aria-label='Like' or @aria-label='Thích']")
+            else:
+                like_buttons = driver.find_elements(By.XPATH, "//div[@aria-label='Like' or @aria-label='Thích']")
+
+            if like_buttons:
+                like_button = like_buttons[0]
                 aria_label = like_button.get_attribute("aria-label")
                 aria_pressed = like_button.get_attribute("aria-pressed")
 
-                already_liked = False  # Biến kiểm tra đã like hay chưa
+                already_liked = aria_label in ["Like", "Thích"] and aria_pressed == "true"
 
-                if aria_label in ["Like", "Thích"] and aria_pressed == "true":
-                    already_liked = True
-
-                # 🟢 Nếu chưa tìm thấy, kiểm tra phần tử con của like_button
                 if not already_liked:
-                    child_elements = like_button.find_elements(By.XPATH, ".//*")  # Lấy tất cả con của like_button
-                    for child in child_elements:
-                        child_label = child.get_attribute("aria-label")
-                        child_pressed = child.get_attribute("aria-pressed")
-
-                        if child_label in ["Like", "Thích"] and child_pressed == "true":
-                            already_liked = True
-                            break  # Nếu tìm thấy rồi thì dừng luôn
-
-                # 🛑 Nếu đã like trước đó, bỏ qua
-                if already_liked:
-                    print(f"✅ Đã like trước đó, bỏ qua: {link}")
-                else:
                     like_button.click()
                     print(f"👍 Đã like: {link}")
+                else:
+                    print(f"✅ Đã like trước đó, bỏ qua: {link}")
             else:
                 print(f"Không tìm thấy nút Like: {link}")
 
