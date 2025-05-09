@@ -1,19 +1,20 @@
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 import time
 import re
 import random
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
 
 def extract_links(text):
     url_pattern = r"https?://(?:www\.)?(?:facebook|youtube|instagram)\.com/[\w\-./?=&#]+"
     return re.findall(url_pattern, text)
 
-def process_links(driver, links, comments, isComment=False):
+def process_links(driver, links, comments, is_comment=False):
     driver.get("https://www.facebook.com")
-    time.sleep(15)
+    time.sleep(10)
     for link in links:
         try:
             driver.get(link)
@@ -48,7 +49,7 @@ def process_links(driver, links, comments, isComment=False):
                     print(f"❌ Like button not found: {link}")
 
                 # Comment on Facebook
-                if isComment and comments:
+                if is_comment and comments:
                     time.sleep(1)
                     random_comment = random.choice(comments)
 
@@ -109,24 +110,12 @@ def process_links(driver, links, comments, isComment=False):
 
 def main():
     try:
-        # Nếu geckodriver không trong PATH, chỉ định đường dẫn tới geckodriver
-        # Thay đường dẫn dưới đây bằng đường dẫn thực tế tới geckodriver trên máy của bạn
-        # Ví dụ: "C:/Drivers/geckodriver.exe" trên Windows hoặc "/usr/local/bin/geckodriver" trên Linux/macOS
-        geckodriver_path = ""  # Để trống nếu geckodriver đã trong PATH
-        
-        # Nếu Firefox không ở vị trí mặc định, chỉ định đường dẫn tới firefox binary
-        firefox_binary_path = ""  # Thay bằng đường dẫn thực tế, ví dụ: "C:/Program Files/Mozilla Firefox/firefox.exe"
-        
         # Cấu hình Firefox binary (nếu cần)
-        firefox_options = webdriver.FirefoxOptions()
-        if firefox_binary_path:
-            firefox_options.binary_location = firefox_binary_path
-        
-        # Khởi tạo trình duyệt Firefox
-        if geckodriver_path:
-            driver = webdriver.Firefox(executable_path=geckodriver_path, options=firefox_options)
-        else:
-            driver = webdriver.Firefox(options=firefox_options)
+        firefox_options = Options()
+        profile = 'C:/Users/nguye/AppData/Roaming/Mozilla/Firefox/Profiles/{Tên profile}'
+        firefox_options.add_argument('-profile')
+        firefox_options.add_argument(profile)
+        driver = webdriver.Firefox(options=firefox_options)
         
         # Load links
         links = []
@@ -137,20 +126,20 @@ def main():
         print(f"Loaded {len(links)} unique links")
 
         # Load comments
-        isComment = False
+        is_comment = False
         comments = []
-        if isComment:
+        if is_comment:
             try:
                 with open("comment.txt", "r", encoding="utf-8") as file:
                     comments = [comment.strip() for comment in file.readlines() if comment.strip()]
                 print(f"Loaded {len(comments)} comments")
             except FileNotFoundError:
                 print("❌ File comment.txt not found, skipping comments")
-                isComment = False
+                is_comment = False
 
         # Process each link
         if links:
-            process_links(driver, links, comments, isComment)
+            process_links(driver, links, comments, is_comment)
         else:
             print("❌ No valid links found in facebook_links.txt")
 
