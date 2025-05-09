@@ -1,66 +1,73 @@
 import re
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-import time
-import undetected_chromedriver as uc
-import random
-import pdb
-
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
-from selenium.webdriver.common.keys import Keys
+import time
 import random
-
+import os
 
 def extract_links(text):
-    url_pattern = r"https?://(?:www\.)?(?:facebook|youtube)\.com/[\w\-./?=&#]+"
+    url_pattern = r"https?://(?:www\.)?(?:facebook|youtube|instagram)\.com/[\w\-./?=&#]+"
     return re.findall(url_pattern, text)
 
-
-# Lấy link
+# Load links
 links = []
 with open("facebook_links.txt", "r", encoding="utf-8") as file:
     for line in file:
         links.extend(extract_links(line))
-
 links = list(set(links))
 
-# Lấy comment
+# Load comments
 isComment = True
-
 comments = []
 if isComment:
-    # Mở file và đọc nội dung
     with open("comment.txt", "r", encoding="utf-8") as file:
-        comments = file.readlines()  # Đọc từng dòng và lưu vào list
+        comments = [comment.strip() for comment in file.readlines() if comment.strip()]
 
-    # Xóa khoảng trắng dư thừa (nếu có)
-    comments = [comment.strip() for comment in comments if comment.strip()]
-
-
-
+# ChromeDriver setup for version 136
 try:
-    options = uc.ChromeOptions()
-    options.add_argument("--user-data-dir=C:/Users/leduy/AppData/Local/Google/Chrome/User Data")  # Thay YOUR_USERNAME bằng tên user của bạn
-    options.add_argument("--profile-directory=Profile 4")  # Hoặc thay bằng profile cụ thể
-
-    driver = uc.Chrome(options=options)
+    # Path to ChromeDriver executable (ensure ChromeDriver 136 is downloaded)
+    chromedriver_path = "path/to/chromedriver"  # Replace with actual path to chromedriver.exe
+    service = Service(chromedriver_path)
+    
+    # Chrome options
+    options = webdriver.ChromeOptions()
+    
+    # Use user profile (adjust path for your system)
+    user_data_dir = os.path.expanduser("~") + "/AppData/Local/Google/Chrome/User Data"  # Windows
+    # For Linux: user_data_dir = os.path.expanduser("~/.config/google-chrome")
+    # For macOS: user_data_dir = os.path.expanduser("~/Library/Application Support/Google/Chrome")
+    
+    options.add_argument(f"--user-data-dir={user_data_dir}")
+    options.add_argument("--profile-directory=Profile 4")  # Adjust profile if needed
+    options.add_argument("--no-sandbox")  # Optional for stability
+    options.add_argument("--disable-dev-shm-usage")  # Optional for stability
+    
+    # Initialize driver
+    driver = webdriver.Chrome(service=service, options=options)
     driver.maximize_window()
 except Exception as e:
-    print(f"Lỗi start chrome: {e}")
+    print(f"Error starting Chrome: {e}")
+    exit()
 
-
-
+# Process each link
 for link in links:
     try:
         driver.get(link)
-        time.sleep(2) 
-        
+        time.sleep(2)  # Initial page load wait
+
         if "facebook.com" in link:
+            # Handle potential popups
+            WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            )
             popup = driver.find_elements(By.XPATH, "//div[@role='dialog']")
             is_popup = len(popup) > 0
 
+            # Locate like button
             if is_popup:
                 like_buttons = driver.find_elements(By.XPATH, "//div[@role='dialog']//div[@aria-label='Like' or @aria-label='Thích']")
             else:
@@ -70,81 +77,72 @@ for link in links:
                 like_button = like_buttons[0]
                 aria_label = like_button.get_attribute("aria-label")
                 aria_pressed = like_button.get_attribute("aria-pressed")
-
                 already_liked = aria_label in ["Like", "Thích"] and aria_pressed == "true"
 
                 if not already_liked:
-                    like_button.click()
-                    print(f"👍 Đã like: {link}")
+                    driver.execute_script("arguments[0].click();", like_button)
+                    print(f"👍 Liked: {link}")
                 else:
-                    print(f"✅ Đã like trước đó, bỏ qua: {link}")
+                    print(f"✅ Already liked, skipping: {link}")
             else:
-                print(f"Không tìm thấy nút Like: {link}")
+                print(f"❌ Like button not found: {link}")
 
-            # Comment Facebook
+            # Comment on Facebook
             if isComment:
                 time.sleep(1)
-                random_comment = random.choice(comments)  # Lấy 1 comment ngẫu nhiên
+                random_comment = random.choice(comments)
 
-                # Tìm ô nhập bình luận
-                comment_box = driver.find_element(By.CSS_SELECTOR, 'div[contenteditable="true"]')
-
+                # Locate comment box
+                comment_box = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, 'div[contenteditable="true"]'))
+                )
                 if comment_box:
-                    comment_box.click()  # Click vào để kích hoạt ô nhập
-                    comment_box.send_keys(random_comment)  # Nhập nội dung
-                    time.sleep(1)  # Đợi giao diện cập nhật
-                    
-                    # Gửi bình luận bằng cách nhấn Enter
+                    comment_box.click()
+                    comment_box.send_keys(random_comment)
+                    time.sleep(1)
                     comment_box.send_keys(Keys.ENTER)
-
-                    print(f"Đã nhập và gửi bình luận!: {link}")
+                    print(f"💬 Commented: {link}")
                 else:
-                    print(f"Không tìm thấy ô nhập bình luận!: {link}")
-
+                    print(f"❌ Comment box not found: {link}")
 
         elif "youtube.com" in link:
-            # 🟢 Tìm phần tử cha có id="like-button"
-            like_button = driver.find_element(By.ID, "like-button")
-
-            # 🟢 Kiểm tra trong phần tử con
-            button = like_button.find_element(By.XPATH, ".//button[@aria-pressed]")  
+            # Locate like button
+            like_button = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "like-button"))
+            )
+            button = like_button.find_element(By.XPATH, ".//button[@aria-pressed]")
             if button:
-                # Kiểm tra trạng thái like
                 if button.get_attribute("aria-pressed") == "false":
                     driver.execute_script("arguments[0].click();", button)
-                    print(f"👍 Đã like: {link}!")
+                    print(f"👍 Liked: {link}")
                 else:
-                    print(f"✅ Đã like trước đó, bỏ qua: {link}")
+                    print(f"✅ Already liked, skipping: {link}")
             else:
-                print(f"❌ Không tìm thấy button bên trong. {link}")
+                print(f"❌ Like button not found: {link}")
 
         elif "instagram.com" in link:
-            # Tìm nút like (svg có aria-label="Like")
-            # like_button = driver.find_element(By.XPATH, "//svg[@aria-label='Like']")
+            # Locate like button
             like_button = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.XPATH, "//svg[@aria-label='Like']"))
             )
-
             if like_button:
                 button_parent = like_button.find_element(By.XPATH, "./ancestor::div[@role='button'] | ./ancestor::button")
                 if button_parent:
                     driver.execute_script("arguments[0].click();", button_parent)
-                    print(f"👍 Đã like! {link}")
+                    print(f"👍 Liked: {link}")
                 else:
-                    print(f"❌ Không tìm thấy nút Like. {link}")
+                    print(f"❌ Like button parent not found: {link}")
             else:
-                # Kiểm tra nếu đã like trước đó (tìm Unlike)
+                # Check if already liked
                 unlike_button = driver.find_elements(By.XPATH, "//svg[@aria-label='Unlike']")
-
                 if unlike_button:
-                    print(f"✅ Đã like trước đó, bỏ qua. {link}")
+                    print(f"✅ Already liked, skipping: {link}")
                 else:
-                    print(f"❌ Không tìm thấy nút Like hoặc Unlike. {link}")
-            
+                    print(f"❌ Neither Like nor Unlike button found: {link}")
 
-        time.sleep(2)
+        time.sleep(2)  # Post-action wait
     except Exception as e:
-        print(f"Lỗi khi xử lý {link}: {e}")
+        print(f"Error processing {link}: {e}")
 
-print("Hoàn thành!")
+print("Completed!")
 driver.quit()
